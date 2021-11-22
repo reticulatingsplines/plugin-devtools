@@ -4,7 +4,103 @@ namespace EntityViewer {
     const WINDOW_CLASS = 'devtools.window.entityviewer';
     const TOOL_ID = 'devtools.tool.entityviewer';
 
+    const itemsList = [
+        "Balloon",
+        "Toy",
+        "Map",
+        "Photo",
+        "Umbrella",
+        "Drink",
+        "Burger",
+        "Chips",
+        "IceCream",
+        "Candyfloss",
+        "EmptyCan",
+        "Rubbish",
+        "EmptyBurgerBox",
+        "Pizza",
+        "Voucher",
+        "Popcorn",
+        "HotDog",
+        "Tentacle",
+        "Hat",
+        "ToffeeApple",
+        "TShirt",
+        "Doughnut",
+        "Coffee",
+        "EmptyCup",
+        "Chicken",
+        "Lemonade",
+        "EmptyBox",
+        "EmptyBottle",
+        "unknown",
+        "unknown",
+        "unknown",
+        "Admission",
+        "Photo2",
+        "Photo3",
+        "Photo4",
+        "Pretzel",
+        "Chocolate",
+        "IcedTea",
+        "FunnelCake",
+        "Sunglasses",
+        "BeefNoodles",
+        "FriedRiceNoodles",
+        "WontonSoup",
+        "MeatballSoup",
+        "FruitJuice",
+        "SoybeanMilk",
+        "Sujeonggwa",
+        "SubSandwich",
+        "Cookie",
+        "EmptyBowlRed",
+        "EmptyDrinkCarton",
+        "EmptyJuiceCup",
+        "RoastSausage",
+        "EmptyBowlBlue",
+        "unknown",
+        "unknown",
+        "Count"
+    ] as string[];
+
+    const voucherList = [
+        "Free Park Entry",
+        "Free Ride",
+        "Park Entry Half Price",
+        "Free Food or Drink"
+    ] as string[];
+
+    const peepStateList = [
+        "Falling",
+        "One",
+        "QueuingFront",
+        "OnRide",
+        "LeavingRide",
+        "Walking",
+        "Queuing",
+        "EnteringRide",
+        "Sitting",
+        "Picked",
+        "Patrolling",
+        "Mowing",
+        "Sweeping",
+        "EnteringPark",
+        "LeavingPark",
+        "Answering",
+        "Fixing",
+        "Buying",
+        "Watching",
+        "EmptyingBin",
+        "UsingBin",
+        "Watering",
+        "HeadingToInspection",
+        "Inspecting"
+    ] as string[];
+
     var entityId: number;
+    var guest: Guest;
+    var guestinv: String[];
 
     export function register() {
         ui.registerMenuItem('Entity Viewer', () => {
@@ -12,7 +108,7 @@ namespace EntityViewer {
                 id: TOOL_ID,
                 cursor: "cross_hair",
                 onDown: e => {
-                    if (e.entityId) {
+                    if (e.entityId && map.getEntity(e.entityId).type == "guest") {
                         getOrOpen(e.entityId);
                     }
                 }
@@ -22,6 +118,7 @@ namespace EntityViewer {
 
     function getOrOpen(id: number) {
         entityId = id;
+        guest = map.getEntity(id) as Guest
         const w = ui.getWindow(WINDOW_CLASS);
         if (w) {
             w.bringToFront();
@@ -31,10 +128,11 @@ namespace EntityViewer {
     }
 
     function open() {
+        const e = map.getEntity(entityId) as Guest
         const window = ui.openWindow({
             classification: WINDOW_CLASS,
             title: '',
-            width: 300,
+            width: 350,
             height: 500,
             minWidth: 300,
             minHeight: 300,
@@ -55,11 +153,21 @@ namespace EntityViewer {
                     isStriped: true,
                     canSelect: true,
                     x: 5,
-                    y: 20,
+                    y: 40,
                     width: 290,
                     height: 575,
                     onClick: (i, c) => console.log(`Clicked item ${i} in column ${c}`)
-                }
+                },
+                {
+                    type: "dropdown",
+                    name: "guestsender",
+                    x: 5,
+                    y: 18,
+                    width: 200,
+                    height: 20,
+                    selectedIndex: (e.headingToRideId && map.getRide(e.headingToRideId) ? e.headingToRideId : 0),
+                    onChange: ((i): number => e.headingToRideId = i)
+                },
             ],
             onClose: () => onClose(),
             onUpdate: () => onUpdate()
@@ -76,11 +184,14 @@ namespace EntityViewer {
             updateInfo();
         }
 
-        function set(items: ListViewItem[]) {
-            const list = window.findWidget<ListView>("rve-debug-list");
+        function set(items: ListViewItem[], guest: Guest) {
+            const list = window.findWidget<ListViewWidget>("rve-debug-list");
             list.width = window.width - 10;
             list.height = window.height - 36;
             list.items = items;
+            const dropdown = window.findWidget<DropdownWidget>("guestsender");
+            dropdown.items = map.rides.map(ride => `${ride.name} - id ${ride.id}`); 
+            
         }
 
         function updateInfo() {
@@ -88,7 +199,7 @@ namespace EntityViewer {
 
             const entity = map.getEntity(entityId);
             if (!entity) {
-                set([["Entity does not exist anymore.", ""]]);
+                set([["Guest does not exist anymore.", ""]], entity);
                 return;
             }
 
@@ -100,110 +211,49 @@ namespace EntityViewer {
                 ["Type:", entity.type.toString()],
                 ["Position:", `${entity.x}, ${entity.y}, ${entity.z}`]
             ];
-
-            switch (entity.type) {
-                case "car":
-                    const car = entity as Car;
-                    data = data.concat([
-                        ["", ""],
-                        sep('Car'),
-                        ["Ride id", car.ride.toString()],
-                        ["Ride object id", car.rideObject.toString()],
-                        ["Vehicle object id", car.vehicleObject.toString()],
-                        ["Sprite type", car.spriteType.toString()],
-                        ["Num. of seats", car.numSeats.toString()],
-                        ["Next car on train", car.nextCarOnTrain?.toString() ?? "null"],
-                        ["Next car on ride", car.nextCarOnRide.toString()],
-                        ["Previous car on ride", car.previousCarOnRide.toString()],
-                        ["Current station", car.currentStation.toString()],
-                        ["", ""],
-                        ["Mass:", car.mass.toString()],
-                        ["Acceleration:", car.acceleration.toString()],
-                        ["Banking rotation:", car.bankRotation.toString()],
-                        ["Colours", `body: ${car.colours.body}, trim: ${car.colours.trim}, ternary: ${car.colours.ternary}`],
-                        ["Powered acceleration:", car.poweredAcceleration.toString()],
-                        ["Powered max. speed:", car.poweredMaxSpeed.toString()],
-                        ["Status:", car.status.toString()],
-                        ["Peeps:", car.peeps.map(p => (p == null) ? "null" : p.toString()).toString()],
-                        ["", ""],
-                        // @ts-expect-error
-                        ["Track location", `${car.trackLocation.x}, ${car.trackLocation.y}, ${car.trackLocation.z}, dir: ${car.trackLocation.direction}`],
-                        ["Track progress", car.trackProgress.toString()],
-                        ["Remaining distance", car.remainingDistance.toString()],
-                    ]);
-
-
-                    const rideObject = context.getObject("ride", car.rideObject);
-                    const vehicleObject = rideObject.vehicles[car.vehicleObject];
-
-                    data = data.concat([
-                        ["", ""],
-                        sep('VehicleObject'),
-                        ["Rotation frame mask:", vehicleObject.rotationFrameMask.toString()],
-                        ["Num. of vertical frames:", vehicleObject.numVerticalFrames.toString()],
-                        ["Num. of horizontal frames:", vehicleObject.numHorizontalFrames.toString()],
-                        ["Spacing:", vehicleObject.spacing.toString()],
-                        ["Car mass:", vehicleObject.carMass.toString()],
-                        ["Tab height:", vehicleObject.tabHeight.toString()],
-                        ["Num. of seats:", vehicleObject.numSeats.toString()],
-                        ["", ""],
-                        ["Sprite flags:", vehicleObject.spriteFlags.toString()],
-                        ["Sprite width:", vehicleObject.spriteWidth.toString()],
-                        ["Sprite height:", vehicleObject.spriteHeightPositive.toString()],
-                        ["Animation:", vehicleObject.animation.toString()],
-                        ["Flags:", vehicleObject.flags.toString()],
-                        // Here are many image id properties not included.
-                        ["", ""],
-                        ["Num. of vehicle images:", vehicleObject.noVehicleImages.toString()],
-                        ["Num. of seating rows:", vehicleObject.noSeatingRows.toString()],
-                        ["Spinning inertia:", vehicleObject.spinningInertia.toString()],
-                        ["Spinning friction:", vehicleObject.spinningFriction.toString()],
-                        ["Friction sound id:", vehicleObject.frictionSoundId.toString()],
-                        ["Logflume reverser vehicle:", vehicleObject.logFlumeReverserVehicleType.toString()],
-                        ["Sound range:", vehicleObject.soundRange.toString()],
-                        ["Double sound frequency:", vehicleObject.doubleSoundFrequency.toString()],
-                        ["", ""],
-                        ["Powered acceleration:", vehicleObject.poweredAcceleration.toString()],
-                        ["Powered max speed:", vehicleObject.poweredMaxSpeed.toString()],
-                        ["Car visual:", vehicleObject.carVisual.toString()],
-                        ["Effect visual:", vehicleObject.effectVisual.toString()],
-                        ["Draw order:", vehicleObject.drawOrder.toString()],
-                    ]);
-
-                    data = data.concat([
-                        ["", ""],
-                        sep('RideObject'),
-                        ["Type:", rideObject.type.toString()],
-                        ["Index:", rideObject.index.toString()],
-                        ["Identifier:", rideObject.identifier.toString()],
-                        ["Legacy id:", rideObject.legacyIdentifier.toString()],
-                        ["Name:", rideObject.name.toString()],
-                        ["", ""],
-                        ["Capacity:", rideObject.capacity.toString()],
-                        ["Flags:", rideObject.flags.toString()],
-                        ["Ride type:", rideObject.rideType.map(r => (r == null) ? "null" : r.toString()).toString()],
-                        ["", ""],
-                        ["Min. cars in train:", rideObject.minCarsInTrain.toString()],
-                        ["Max. cars in train:", rideObject.maxCarsInTrain.toString()],
-                        ["Cars per flatride:", rideObject.carsPerFlatRide.toString()],
-                        ["Seatless cars:", rideObject.zeroCars.toString()],
-                        ["", ""],
-                        ["Tab vehicle:", rideObject.tabVehicle.toString()],
-                        ["Default vehicle:", rideObject.defaultVehicle.toString()],
-                        ["Front vehicle:", rideObject.frontVehicle.toString()],
-                        ["Second vehicle:", rideObject.secondVehicle.toString()],
-                        ["Third vehicle:", rideObject.thirdVehicle.toString()],
-                        ["Rear vehicle:", rideObject.rearVehicle.toString()],
-                        ["", ""],
-                        ["Excitement multiplier:", rideObject.excitementMultiplier.toString()],
-                        ["Intensity multiplier:", rideObject.intensityMultiplier.toString()],
-                        ["Nausea multiplier:", rideObject.nauseaMultiplier.toString()],
-                        ["Max height:", rideObject.maxHeight.toString()],
-                        ["Shop items:", `${rideObject.shopItem}, ${rideObject.shopItemSecondary}`],
-                    ]);
-            }
-
-            set(data);
+            guest = entity as Guest;
+            guestinv = []
+            for (let i = 0; i < guest.inventory.length; i++)
+                {
+                    if (guest.inventory[i] == 255)
+                    {
+                        guestinv.push("None");
+                    }
+                    else
+                    {
+                        guestinv.push(itemsList[guest.inventory[i]]);
+                    }
+                }
+            data = data.concat([
+                sep('Peep'),
+                ["Name", guest.name],
+                ["Location", `x: ${Math.floor(guest.x/32)}, y: ${Math.floor(guest.y/32)}, z: ${Math.floor(guest.z/32)}`],
+                ["Destination", `x: ${Math.floor(guest.destination.x/32), Math.floor(guest.destination.y/32)}`],
+                ["Energy", guest.energy.toString()],
+                ["Energy target", guest.energyTarget.toString()],
+                ["",""],
+                sep('Guest'),
+                ["Guest happiness", guest.happiness.toString()],
+                ["Guest happiness target", guest.happinessTarget.toString()],
+                ["Guest nausea", guest.nausea.toString()],
+                ["Guest nausea target", guest.nauseaTarget.toString()],
+                ["Guest mass (Lbs)", (Math.round(guest.mass * 2.2).toString())],
+                ["Guest heading to ride ID", `${guest.headingToRideId}`],
+                ["Guest heading to ride name", `${(map.getRide(guest.headingToRideId) ? map.getRide(guest.headingToRideId).name : "None")}`],
+                ["Guest inventory", guestinv.join()],
+                ["Guest previous ride", `${(map.getRide(guest.previousRide) ? map.getRide(guest.previousRide).name : "None")}`],
+                ["Guest current ride", `${map.getRide(guest.currentRide) ? map.getRide(guest.currentRide).name : "None"}`],
+                ["Guest interacting ride", `${map.getRide(guest.interactionRide) ? map.getRide(guest.interactionRide).name : "None"}`],
+                ["Guest CurrentRideStation", `${guest.currentRideStation != null ? guest.currentRideStation.toString() : "Undefined"}`],
+                ["Guest ride queue time", map.getRide(guest.interactionRide) ? map.getRide(guest.interactionRide).stations[guest.currentRideStation].queueTime.toString() : "None"],
+                ["Guest ride queue length", map.getRide(guest.interactionRide) ? map.getRide(guest.interactionRide).stations[guest.currentRideStation].queueLength.toString() : "None"],
+                ["Guest PeepState", `${guest.peepState} - ${peepStateList[guest.peepState]}`],
+                ["Guest Voucher Type", guest.voucherType != 255 && guest.inventory.indexOf(14) > -1 ? voucherList[guest.voucherType] : "None"],
+                ["Guest Voucher Ride", guest.voucherId != null && guest.inventory.indexOf(14) > -1 ? (map.getRide(guest.voucherId) && guest.voucherType == 1 ? map.getRide(guest.voucherId).name : "None") : "None"],
+                ["Guest Voucher Item", guest.voucherId != null && guest.inventory.indexOf(14) > -1 ? ( guest.voucherId != 255 && guest.voucherType == 3 ? itemsList[guest.voucherId] : "None") : "None"],
+                ["Raw Voucher ID", guest.voucherId.toString()]
+            ]);
+            set(data, guest)
         }
     }
 }

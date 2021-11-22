@@ -7,8 +7,6 @@ const main = () => {
     }
 
     EntityViewer.register();
-    ImageList.register();
-    NetworkMonitor.register();
 
     if (DEBUG) {
         ui.closeAllWindows();
@@ -18,10 +16,11 @@ const main = () => {
 };
 
 registerPlugin({
-    name: 'DevTools',
+    name: 'DevTools - Additional Guest Data Viewer',
     version: '1.0',
-    authors: ['OpenRCT2'],
+    authors: ['OpenRCT2','reticulatingsplines'],
     type: 'local',
     licence: 'MIT',
+    targetApiVersion: 34,
     main: main
 });
